@@ -1,6 +1,6 @@
 {
   "name": "@panthera/pubsub",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A publisher/subscriber module based on PostgreSQL's NOTIFY/LISTEN/UNLISTEN.",
   "main": "lib/index.js",
   "scripts": {
