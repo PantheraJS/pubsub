@@ -3,147 +3,77 @@
  */
 'use strict';
 
-const EventEmitter = require('events');
-const proxyquire   = require('proxyquire');
-const sinon        = require('sinon');
-const test         = require('ava');
+const sinon = require('sinon');
+const test  = require('ava');
 
-const stubs = {
-  pg: {
-    Client: class Client extends EventEmitter {
-      constructor() {
-        super();
-        this.connect = sinon.stub().callsArg(0);
-        this.query   = sinon.stub().resolves();
-      }
-    }
-  }
-};
+const pubsub = require('../lib/index.js');
 
-const pubsub = proxyquire('../lib/index.js', stubs);
-
-test('#listen should set `_connected` flag to `true`', async t => {
+test('should set `_connected` to `false`', t => {
   const client = pubsub();
 
   t.false(client._connected);
-  await client.listen('channel', () => {});
-  t.true(client._connected);
-  await client.listen('channel', () => {});
-  t.true(client._connected);
 });
 
-test('#listen should call `client.query`', async t => {
+test('should assign `listen`, `notify`, and `unlisten` methods', t => {
   const client = pubsub();
 
-  t.true(client.query.callCount === 0);
-  await client.listen('channel', () => {});
-  t.true(client.query.callCount === 1);
-  await client.listen('channel', () => {});
-  t.true(client.query.callCount === 2);
-});
-
-test('#listen should add event listener', async t => {
-  const client = pubsub();
-
-  t.true(client.listenerCount('channel') === 0);
-  await client.listen('channel', () => {});
-  t.true(client.listenerCount('channel') === 1);
-  await client.listen('channel', () => {});
-  t.true(client.listenerCount('channel') === 2);
-});
-
-test('#notify should set `_connected` flag to `true`', async t => {
-  const client = pubsub();
-
-  t.false(client._connected);
-  await client.notify('channel', 'payload');
-  t.true(client._connected);
-  await client.notify('channel', 'payload');
-  t.true(client._connected);
-});
-
-test('#notify should handle optional payload', async t => {
-  const client = pubsub();
-
-  await t.notThrows(() => {
-    client.notify('channel');
+  [ 'listen', 'notify', 'unlisten' ].forEach((property) => {
+    t.true(Object.prototype.hasOwnProperty.call(client, property));
+    t.true(typeof client[property] === 'function');
   });
 });
 
-test('#notify should call `client.query`', async t => {
+test('`end` event should remove all event listeners', async t => {
   const client = pubsub();
 
-  t.true(client.query.callCount === 0);
-  await client.notify('channel', 'payload');
-  t.true(client.query.callCount === 1);
-  await client.notify('channel', 'payload');
-  t.true(client.query.callCount === 2);
-});
-
-test('#unlisten should set `_connected` flag to `true`', async t => {
-  const client = pubsub();
-
-  t.false(client._connected);
-  await client.unlisten('channel', () => {});
-  t.true(client._connected);
-  await client.unlisten('channel', () => {});
-  t.true(client._connected);
-});
-
-test('#unlisten should call `client.query`', async t => {
-  const client = pubsub();
-
-  t.true(client.query.callCount === 0);
-  await client.unlisten('channel', () => {});
-  t.true(client.query.callCount === 1);
-  await client.unlisten('channel', () => {});
-  t.true(client.query.callCount === 2);
-});
-
-test('#unlisten should remove event listener', async t => {
-  const client = pubsub();
+  client._connected = true;
+  sinon.stub(client, 'query').resolves(client);
+  sinon.spy(client, 'removeAllListeners');
 
   t.true(client.listenerCount('channel') === 0);
+  t.true(client.removeAllListeners.notCalled);
+
   await client.listen('channel', () => {});
   t.true(client.listenerCount('channel') === 1);
-  await client.unlisten('channel', () => {});
-  t.true(client.listenerCount('channel') === 0);
-});
+  t.true(client.removeAllListeners.notCalled);
 
-test('client `end` event should remove all event listeners', async t => {
-  const client = pubsub();
-
-  t.true(client.listenerCount('channel') === 0);
-  await client.listen('channel', () => {});
-  t.true(client.listenerCount('channel') === 1);
   client.emit('end');
   t.true(client.listenerCount('channel') === 0);
+  t.true(client.removeAllListeners.calledOnce);
 });
 
-test('client `notification` event should emit if listeners attached', async t => {
-  const client = pubsub();
-
-  t.true(client.listenerCount('channel') === 0);
-  await client.listen('channel', () => {});
-  t.true(client.listenerCount('channel') === 1);
-  client.emit('notification', {
+test('`notification` event should delegate to client#emit if listeners attached', async t => {
+  const client  = pubsub();
+  const message = {
     channel: 'channel',
     payload: 'data'
-  });
-  client.emit('end');
-  t.true(client.listenerCount('channel') === 0);
+  };
+
+  client._connected = true;
+  sinon.stub(client, 'query').resolves(client);
+  sinon.spy(client, 'emit');
+
+  await client.listen('channel', () => {});
+
+  client.emit('notification', message);
+
+  t.true(client.emit.calledTwice);
+  t.true(client.emit.calledWithExactly(message.channel, message.payload));
 });
 
-test('client `notification` event should ignore if no listeners attached', async t => {
-  const client = pubsub();
-
-  t.true(client.listenerCount('channel') === 0);
-  await client.listen('channel', () => {});
-  t.true(client.listenerCount('channel') === 1);
-  client.emit('notification', {
-    channel: 'notlistening',
+test('`notification` event should not delegate to client#emit if no listeners attached', t => {
+  const client  = pubsub();
+  const message = {
+    channel: 'channel',
     payload: 'data'
-  });
-  client.emit('end');
-  t.true(client.listenerCount('channel') === 0);
+  };
+
+  client._connected = true;
+  sinon.stub(client, 'query').resolves(client);
+  sinon.spy(client, 'emit');
+
+  client.emit('notification', message);
+
+  t.true(client.emit.calledOnce);
+  t.true(client.emit.neverCalledWith(message.channel, message.payload));
 });
