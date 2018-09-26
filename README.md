@@ -8,3 +8,8 @@
 [![Maintainability](https://img.shields.io/codeclimate/maintainability/pantherajs/pubsub.svg?style=flat-square)](https://codeclimate.com/github/pantherajs/pubsub)
 [![Dependencies Status](https://david-dm.org/pantherajs/pubsub/status.svg?style=flat-square)](https://david-dm.org/pantherajs/pubsub)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/pantherajs/pubsub/blob/master/LICENSE)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpantherajs%2Fpubsub.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpantherajs%2Fpubsub?ref=badge_shield)
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpantherajs%2Fpubsub.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpantherajs%2Fpubsub?ref=badge_large)
